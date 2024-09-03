@@ -3,108 +3,145 @@ using System.Collections;
 using System.IO;
 using System.Reflection;
 using System.Threading;
-using Unity.Properties;
 using UnityEngine;
 using UnityEngine.Networking;
 using Debug = System.Diagnostics.Debug;
+using System.Collections.Generic;
 
 namespace ShipWindows.Utilities;
 
-public static class SoundLoader {
+public static class SoundLoader
+{
     public static readonly AudioClip[] CommonSellCounterLines = new AudioClip[1];
     public static readonly AudioClip[] RareSellCounterLines = new AudioClip[1];
-    public static readonly AudioClip[] VoiceLines = new AudioClip[2];
+    public static readonly List<AudioClip> VoiceLines = new List<AudioClip>();
 
-    public static IEnumerator LoadAudioClips() {
+    public static IEnumerator LoadAudioClips()
+    {
         var assemblyDirectory = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
 
         Debug.Assert(assemblyDirectory != null, nameof(assemblyDirectory) + " != null");
         var audioPath = Path.Combine(assemblyDirectory, "sounds");
 
-        audioPath = Directory.Exists(audioPath)? audioPath : Path.Combine(assemblyDirectory);
+        audioPath = Directory.Exists(audioPath) ? audioPath : Path.Combine(assemblyDirectory);
 
-        ShipWindows.Logger.LogInfo("Loading Wesley voice lines...");
 
         var voiceLinesAudioPath = Path.Combine(audioPath, "voicelines");
 
-        voiceLinesAudioPath = Directory.Exists(voiceLinesAudioPath)? voiceLinesAudioPath : Path.Combine(audioPath);
+        voiceLinesAudioPath = Directory.Exists(voiceLinesAudioPath) ? voiceLinesAudioPath : Path.Combine(audioPath);
 
-        LoadShutterCloseClip(voiceLinesAudioPath);
-
-        LoadShutterOpenClip(voiceLinesAudioPath);
-
-        if (WindowConfig.enableWesleySellAudio.Value) LoadSellCounterClips(voiceLinesAudioPath);
+        if (WindowConfig.enableShutter.Value)
+        {
+            if (!WindowConfig.enableCustomRandomShutterVoiceLines.Value)
+            {
+                ShipWindows.Logger.LogInfo("Loading Wesley voice lines...");
+                LoadShutterCloseClip(voiceLinesAudioPath);
+                LoadShutterOpenClip(voiceLinesAudioPath);
+            }
+            else
+            {
+                ShipWindows.Logger.LogInfo("Loading Custom Random voice lines...");
+                LoadCustomAudioClips(voiceLinesAudioPath);
+            }
+        }
+        if (WindowConfig.enableWesleySellAudio.Value)
+        {
+            LoadSellCounterClips(voiceLinesAudioPath);
+        }
         yield break;
     }
 
-    private static void LoadShutterOpenClip(string voiceLinesAudioPath) {
-        var shutterOpenFile = Path.Combine(voiceLinesAudioPath, "ShutterOpen.wav");
 
-        var shutterOpenFileName = Path.GetFileName(shutterOpenFile);
-
-        var shutterOpenVoiceLineAudioClip = LoadAudioClipFromFile(new(shutterOpenFile), shutterOpenFileName[..^4]);
-
-        if (shutterOpenVoiceLineAudioClip == null) {
-            ShipWindows.Logger.LogError("Failed to load voice line 'ShutterOpen'!");
-            ShipWindows.Logger.LogError($"Path: {voiceLinesAudioPath}");
-            return;
+    private static void LoadCustomAudioClips(string voiceLinesAudioPath)
+    {
+        var customFolderPath = Path.Combine(voiceLinesAudioPath, "Custom");
+        if (!Directory.Exists(customFolderPath))
+        {
+            Directory.CreateDirectory(customFolderPath);
         }
-
-        VoiceLines[0] = shutterOpenVoiceLineAudioClip;
-        ShipWindows.Logger.LogInfo($"Loaded line '{shutterOpenVoiceLineAudioClip.name}'!");
+        var customFiles = Directory.GetFiles(customFolderPath);
+        foreach (var customFile in customFiles)
+        {
+            var customClip = LoadAudioClipFromFile(customFile);
+            if (customClip != null)
+            {
+                VoiceLines.Add(customClip);
+            }
+        }
     }
 
-    private static void LoadShutterCloseClip(string voiceLinesAudioPath) {
-        var shutterCloseFile = Path.Combine(voiceLinesAudioPath, "ShutterClose.wav");
+    private static void LoadShutterOpenClip(string voiceLinesAudioPath)
+    {
+        var shutterOpenFilePath = Path.Combine(voiceLinesAudioPath, "ShutterOpen.wav");
+        var shutterOpenVoiceLineAudioClip = LoadAudioClipFromFile(shutterOpenFilePath);
 
-        var shutterCloseFileName = Path.GetFileName(shutterCloseFile);
-
-        var shutterCloseVoiceLineAudioClip = LoadAudioClipFromFile(new(shutterCloseFile), shutterCloseFileName[..^4]);
-
-        if (shutterCloseVoiceLineAudioClip == null) {
-            ShipWindows.Logger.LogError("Failed to load voice line 'ShutterClose'!");
-            ShipWindows.Logger.LogError($"Path: {voiceLinesAudioPath}");
-            return;
+        if (shutterOpenVoiceLineAudioClip != null)
+        {
+            VoiceLines[0] = shutterOpenVoiceLineAudioClip;
         }
-
-        VoiceLines[1] = shutterCloseVoiceLineAudioClip;
-        ShipWindows.Logger.LogInfo($"Loaded line '{shutterCloseVoiceLineAudioClip.name}'!");
     }
 
-    private static void LoadSellCounterClips(string voiceLinesAudioPath) {
-        var sellCounterFile = Path.Combine(voiceLinesAudioPath, "SellCounter1.wav");
-
-        var sellCounterFileName = Path.GetFileName(sellCounterFile);
-
-        var sellCounterAudioClip = LoadAudioClipFromFile(new(sellCounterFile), sellCounterFileName[..^4]);
-
-        if (sellCounterAudioClip == null) {
-            ShipWindows.Logger.LogError("Failed to load voice line 'SellCounter1'!");
-            ShipWindows.Logger.LogError($"Path: {voiceLinesAudioPath}");
-            return;
+    private static void LoadShutterCloseClip(string voiceLinesAudioPath)
+    {
+        var shutterCloseFilePath = Path.Combine(voiceLinesAudioPath, "ShutterClose.wav");
+        var shutterCloseVoiceLineAudioClip = LoadAudioClipFromFile(shutterCloseFilePath);
+        if (shutterCloseVoiceLineAudioClip != null)
+        {
+            VoiceLines[1] = shutterCloseVoiceLineAudioClip;
         }
-
-        if (WindowConfig.makeWesleySellAudioRare.Value) RareSellCounterLines[0] = sellCounterAudioClip;
-        else CommonSellCounterLines[0] = sellCounterAudioClip;
-        ShipWindows.Logger.LogInfo($"Loaded line '{sellCounterAudioClip.name}'!");
     }
 
-    private static AudioClip? LoadAudioClipFromFile(Uri filePath, string name) {
-        using var unityWebRequest = UnityWebRequestMultimedia.GetAudioClip(filePath, AudioType.WAV);
+    private static void LoadSellCounterClips(string voiceLinesAudioPath)
+    {
+        var sellCounterFilePath = Path.Combine(voiceLinesAudioPath, "SellCounter1.wav");
+        var sellCounterAudioClip = LoadAudioClipFromFile(sellCounterFilePath);
+
+        if (sellCounterAudioClip != null)
+        {
+            if (WindowConfig.makeWesleySellAudioRare.Value)
+            {
+                RareSellCounterLines[0] = sellCounterAudioClip;
+            }
+            else
+            {
+                CommonSellCounterLines[0] = sellCounterAudioClip;
+            }
+        }
+    }
+
+    private static AudioClip? LoadAudioClipFromFile(string filePath)
+    {
+        var audioType = AudioType.UNKNOWN;
+        var fileNameWithExt = Path.GetFileName(filePath);
+        var fileNameWithoutExt = Path.GetFileNameWithoutExtension(filePath);
+        var extension = Path.GetExtension(filePath).Substring(1);
+        switch (extension.ToLower())
+        {
+            case "wav":
+                audioType = AudioType.WAV;
+                break;
+            case "mp3":
+                audioType = AudioType.MPEG;
+                break;
+        }
+
+        using var unityWebRequest = UnityWebRequestMultimedia.GetAudioClip(filePath, audioType);
 
         var asyncOperation = unityWebRequest.SendWebRequest();
 
         while (!asyncOperation.isDone)
             Thread.Sleep(100);
 
-        if (unityWebRequest.result != UnityWebRequest.Result.Success) {
-            ShipWindows.Logger.LogError("Failed to load AudioClip: " + unityWebRequest.error);
+        if (unityWebRequest.result != UnityWebRequest.Result.Success)
+        {
+            ShipWindows.Logger.LogError($"Failed to load AudioClip file '{filePath}': {unityWebRequest.error}");
             return null;
         }
 
         var clip = DownloadHandlerAudioClip.GetContent(unityWebRequest);
 
-        clip.name = name;
+        clip.name = fileNameWithoutExt;
+        ShipWindows.Logger.LogInfo($"Loaded AudioClip '{fileNameWithExt}'");
 
         return clip;
     }

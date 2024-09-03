@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Linq;
 using ShipWindows.Components;
 using ShipWindows.Utilities;
 using UnityEngine;
@@ -21,6 +22,9 @@ internal class WindowState {
     [FormerlySerializedAs("VolumeRotation")]
     public float volumeRotation;
 
+
+    private System.Random _random = new System.Random();
+
     public WindowState() => Instance = this;
 
     public static WindowState Instance { get; set; } = null!;
@@ -31,7 +35,15 @@ internal class WindowState {
 
         var windows = Object.FindObjectsByType<ShipWindow>(FindObjectsSortMode.None);
 
-        if (playVoiceLine && windows.Length > 0) PlayVoiceLine(closed? 1 : 0);
+        if (!WindowConfig.enableCustomRandomShutterVoiceLines.Value)
+        {
+            if (playVoiceLine && windows.Length > 0) PlayVoiceLine(closed ? 1 : 0);
+        }
+        else
+        {
+            var randomIndex = _random.Next(0, SoundLoader.VoiceLines.Count);
+            PlayVoiceLine(randomIndex);
+        }
 
         foreach (var w in windows)
             w.SetClosed(closed);
@@ -41,18 +53,23 @@ internal class WindowState {
     }
 
     public static void PlayVoiceLine(int clipIndex) {
-        if (!WindowConfig.enableShutterVoiceLines.Value) return;
+        if (!WindowConfig.enableShutterVoiceLines.Value || SoundLoader.VoiceLines.Count < clipIndex)
+        {
+            return;
+        }
 
         ShipWindows.Logger.LogDebug("Playing clip: " + clipIndex);
 
         var audioClip = SoundLoader.VoiceLines[clipIndex];
+        if (audioClip != null)
+        {
+            var speakerAudioSource = StartOfRound.Instance.speakerAudioSource;
 
-        var speakerAudioSource = StartOfRound.Instance.speakerAudioSource;
+            speakerAudioSource.PlayOneShot(StartOfRound.Instance.disableSpeakerSFX);
 
-        speakerAudioSource.PlayOneShot(StartOfRound.Instance.disableSpeakerSFX);
-
-        speakerAudioSource.clip = audioClip;
-        speakerAudioSource.Play();
+            speakerAudioSource.clip = audioClip;
+            speakerAudioSource.Play();
+        }
     }
 
     public void SetVolumeState(bool active) {

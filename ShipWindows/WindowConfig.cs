@@ -35,6 +35,7 @@ public static class WindowConfig {
     public static ConfigEntry<bool> changeLightSwitchTip = null!;
 
     public static ConfigEntry<bool> enableShutterVoiceLines = null!;
+    public static ConfigEntry<bool> enableCustomRandomShutterVoiceLines = null!;
     public static ConfigEntry<bool> playShutterVoiceLinesOnTransitions = null!;
 
     public static ConfigEntry<bool> enableShutterSwitchScanNode = null!;
@@ -114,6 +115,10 @@ public static class WindowConfig {
 
         enableShutterVoiceLines = configFile.Bind("Misc", "Enable Wesley shutter voice lines", true,
                                                   "If set to true, will load and use Wesley's voice lines for opening/closing the window shutters.");
+
+        enableCustomRandomShutterVoiceLines = configFile.Bind("Misc", "Enable Custom Random shutter voice lines", true,
+                                                  "If set to true, will load and use your own custom random voice lines for opening/closing the window shutters.");
+
         playShutterVoiceLinesOnTransitions = configFile.Bind("Misc", "Play Wesley shutter voice lines on transitions", true,
                                                              "If set to true, will play the voice lines, if opening/closing the window shutters is caused by a transition.");
 
